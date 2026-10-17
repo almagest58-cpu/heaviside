@@ -1,0 +1,44 @@
+name: Napravi APK
+
+on:
+  push:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Raspakuj projekat
+        run: unzip -q projekat.zip -d proj
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.10.2'
+      - name: Ugradi MathJax
+        working-directory: proj
+        run: |
+          mkdir -p app/src/main/assets/mathjax
+          curl -fsSL --retry 3 -o app/src/main/assets/mathjax/tex-svg.js https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/tex-svg.js
+          test $(stat -c%s app/src/main/assets/mathjax/tex-svg.js) -gt 500000
+      - name: Build
+        working-directory: proj
+        run: gradle assembleDebug --no-daemon
+      - name: Pripremi APK
+        run: cp proj/app/build/outputs/apk/debug/app-debug.apk Heaviside.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Heaviside-APK
+          path: Heaviside.apk
+      - name: Objavi u Releases
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete najnovije --yes --cleanup-tag || true
+          gh release create najnovije Heaviside.apk --title "Heaviside - najnovija verzija" --notes "Preuzmi Heaviside.apk i instaliraj ga na telefonu."
