@@ -1,42 +1,50 @@
-# Heaviside – poluprovodnici (grana `poluprovodnici`)
+# Heaviside – poluprovodnici, posebne diode, transformator i osciloskop
 
-Stanje: 23. 10. 2026. Glavna objava i APK (V2.4) **nisu urađeni** – čekaju odluku korisnika. `main` je netaknut.
+Stanje: 23. 10. 2026. Poslednji APK je V2.5 (bez posebnih dioda i transformatora). Nova verzija APK-a **nije pravljena** – čeka odluku korisnika.
 `app.html` = izvorni kod, `projekat.zip` = Android projekat (testovi u `tests/`).
 
-## Urađeno
-- **Novi elementi:** dioda (Si/Ge); NPN/PNP tranzistor, Gummel–Poon podskup (IS, β, β_R, V_A, C_π, C_μ); N/P MOSFET, SPICE level 1 (V_th, k, λ, C_gs, C_gd); DC naponski i DC strujni izvor; DC nivo ulaza Vin.
-- **Jednosmerna radna tačka:** Njutnova metoda sa SPICE ograničavanjem napona, zatim gmin-stepping, pa source-stepping; GMIN raspoređen kao u ngspice-u.
-  - Jasne poruke za plivajuće čvorove, petlje naponskih izvora i nerealne struje.
-- **Model za male signale iz tačnog Jakobijana:** g_m je VCCS u svim rešavačima i u simboličkom izvođenju.
-- **UI, primeri i prevodi:** simboli, paneli, oblast rada na šemi, info kartice, vodič, 5 primera, prevodi na 6 jezika.
-- **Izvođenje i PDF:** korak „Radna tačka i model za male signale“ (tačna vrednost, pa udžbenička aproksimacija u posebnom redu) i tabela radne tačke u PDF-u.
+## Novo u ovoj fazi
+- **Diode po vrstama:** obična (Si/Ge), Zener, Šotki, LED (crvena, žuta, zelena, plava; svetli na šemi kada struja pređe 1 mA), varikap.
+  - Zener: probojni napon BV i struja IBV; proboj se računa kao u ngspice-u (iteracija za xbv).
+  - Idealni režim: samo jednosmerna karakteristika (r_d u modelu za male signale); varikap uvek ima C_j(V).
+  - Realni režim: R_S (unutrašnji čvor), C_j(V) sa VJ i M (M ograničen na 0,9 kao u ngspice-u) i difuziona kapacitivnost τ_T·g_d.
+- **Transformator (T):** odnos n = N₁/N₂, tačke označavaju početke namotaja, dugme za rotaciju obrće fazu sekundara (krajevi ostaju na mestu, žice se ne pomeraju).
+  - Idealni: V₁ = n·V₂, I₂ = n·I₁ (jedna dodatna nepoznata po transformatoru u svim rešavačima: AC, DC radna tačka, vreme, polovi/nule, simboličko izvođenje).
+  - Realni: udžbenička T šema – R₁, L_σ1, L_m paralelno primaru, idealni n:1, L_σ2, R₂. Isto je kao spregnuti kalemovi L₁ = L_σ1 + L_m, L₂ = L_σ2 + L_m/n², M = L_m/n.
+  - Gotovi tipovi: opšti 2:1, mrežni 230 V → 12 V, audio 600 Ω, impulsni (gejt drajver), RF 1:4, SMPS 10:1.
+  - Provera: svaki namotaj mora imati svoju vezu sa masom (jasna poruka).
+- **Info kartice, korak „Model transformatora“ u izvođenju, PDF, primeri** (Zener stabilizator, LED, varikap, prilagođenje impedanse, mrežni transformator), prevodi na 6 jezika.
 
-## Izmena u pencilEig (stara greška, postojala i pre poluprovodnika)
-- **Problem:** polovi daleko od pomaka gubili su relativnu tačnost, pa su se bliski različiti polovi spajali u lažni višestruki. Primer `cs`: trostruko −24 umesto −6,84, −31,19 i −34,26.
-- **Ispravka:** `pencilEigR` takvu grupu ponovo računa sa pomakom oko njene veličine. Novi rezultat prihvata samo ako je broj vrednosti isti i ako ne spaja vrednosti koje su bile razdvojene; bez ovog uslova kolo `act43` je dobilo novi lažni dvostruki pol.
+- **Osciloskop (simulacija u vremenu):** 6 generatora signala (DC, sinus, kvadratni, trougaoni, testerasti, impulsni), voltmetar i ampermetar.
+  - Sa generatorom u kolu: Bode/Nyquist/Smith/Ω/polovi/formule se isključuju, crta se do 5 kanala (napon/struja bilo koje komponente).
+  - Simulator `tran.js`: puni nelinearni modeli, BDF promenljivog koraka sa kontrolom greške na naelektrisanjima, Njutn sa SPICE ograničavanjem, pomoćne metode za teške slučajeve (prigušeni Njutn, pseudo-tranzijent, preskok preko „preklopa“).
+  - Op. pojačavač: napajanje ±V_CC (klizač, standardne vrednosti u E-režimu); izlaz zasićuje na naponima napajanja.
+  - Kanali se čuvaju sa projektom; 5 primera.
+  - Testovi: `trtest` 200 kola (193 upoređeno, 0 grešaka aplikacije), `ostest` 150 kola (148 upoređeno). Na strmim ivicama razlika do nekoliko %, zbog vremenske mreže oba simulatora.
 
-## Rezultati testova (posle svih izmena)
-- **Stari testovi (identični ili bolji nego pre):**
-  - `rtest` 100: formule do 6e-15.
-  - `otest` GEN2 200: grafici 2,74e-10, formule 141/141.
-  - `otest` nasumični 150: grafici 2,31e-8, formule 23/23.
-  - `ptest` 100: 308 oznaka na graficima, 0 problema.
-  - `gtest`: Bode, Ω, Nyquist, Smith i polovi bez greške; vremenski tab je i ranije bio nepouzdana metrika.
-  - `ftest` 14.007 jednačina: 1 lažni nalaz – uslov „Re{Z}=0 ⇔ R₁=0“; kod koji ga piše nije menjan.
-  - `spicetest` 132: 0 problema; na spornim tačkama aplikacija je bliža proračunu od 72 cifre.
-  - `spiceex`: praktično identično; razlike samo na spornim tačkama, gde je greška aplikacije ≤ 7e-11.
-  - `tdtest` 200: 177 tačno (bilo 176, `cs` sada tačan), 11 simulirano. 6 grešaka: `cmp` je očekivan, a u 5 kola ngspice zauzme preko 3 GB memorije i bude prekinut. Lista promašenih polova ista kao pre, osim što je `cs` ispravljen.
-- **Novi testovi:**
-  - `devtest`: 60/60 elemenata se poklapa sa ngspice-om.
-  - `optest` 400: 308/308 se poklapa.
-  - `stest` 980 kola: radna tačka do 3e-9, AC do 1e-6, sve formule do 1e-9.
-  - Z-mode kola sa 1 GΩ ka masi na ulazu (`ZG=1`): 240 kola, 238 upoređeno i sva se poklapaju (OP 1e-10, AC 1,5e-7, formule 238/238). Jedno kolo je nerealno (aplikacija ga ispravno odbija), a u jednom padaju i aplikacija i ngspice.
+- **Realni tranzistor i MOSFET (realni mod, prekidač Idealan/Realan u panelu):**
+  - BJT: r_b, r_c, r_e (unutrašnji čvorovi B′, C′, E′), C_je(V), C_jc(V), τ_F (difuziono naelektrisanje τ_F·I_CC/q_b), τ_R, I_KF; transkapacitivnost C_x = ∂Q_BE/∂V_BC (SPICE geqcb) je poseban element u svim rešavačima (AC, polovi, formule).
+  - MOSFET: R_G, R_D, R_S, C_gs stalna, C_gd(V_GD) glatka (oblik spoja ispod 0, C_gd0 iznad), unutrašnja dioda S→D sa svojim parametrima.
+  - Gotovi tipovi: opšti, BC547, 2N2222, 2N3904 (objavljeni SPICE modeli, uprošćeni), 2N7000, IRF540 (prema katalogu); Reset vraća vrednosti izabranog tipa; izbor tipa i pri dodavanju (meni).
+  - Stari projekti ostaju idealni (realni samo kada je deo izričito prebačen na Realan).
+  - Info kartice: okvir „Realni model“ sa šemom i formulama (i za diodu). Izvođenje: C_π, C_μ, C_x, f_T, C_gd(V) u radnoj tački.
+  - Primeri: tranzistor kao prekidač (2N2222, vreme pražnjenja), MOSFET kao prekidač (IRF540, Milerov plato).
+  - Testovi: `stest QREAL` (OP do 2e-8, AC do 5e-7, formule do 3e-9), `trtest QREAL`, `ostest QREAL` (gotovi tipovi kroz aplikaciju).
 
-## Provereno
-- **MathJax:** iscrtava formule kada je `assets/mathjax/tex-svg.js` prisutan; CI ga ugrađuje, a lokalno je uzet iz ranijeg APK-a.
-- **PDF:** naslovna strana sa šemom i tabelom radne tačke; izvođenje se pravilno iscrtava.
-- **Telefon (390 px):** svetla i tamna tema, meni, paneli i primeri. Raspored primera „emitorski sledilac“ je popravljen.
+## Rezultati testova (posle ove faze)
+- Transformatori prema ngspice-u (`stest.js` sa `XFT=1`): 145 + 112 + 109 kola.
+  - Radna tačka do 9e-13, AC do 4e-7, formule do 8e-12.
+  - Kod realnog transformatora sa k blizu 1 ngspice gubi tačnost na visokim učestanostima (do 11 %); proračun sa razlomcima (tačna aritmetika) potvrđuje aplikaciju (greška 5e-10).
+  - Dva kola sa razlikom 1e-3: ngspice drži GMIN = 1e-12 S između baze i kolektora, a aplikacija takve provodnosti izostavlja (namerno, `SSALL=1` ih zadržava). Sa `SSALL=1` razlika je 3e-11.
+  - Kola u kojima ngspice pada: petlje kalemova ili kalem paralelno izvoru pri DC (aplikaciji radna tačka tu ne treba).
+- Diode prema ngspice-u: `ztest` 1152 tačke do 2e-12; `stest REAL` 150 kola: OP 6e-11, AC 3e-7, formule 2e-10.
+- Stari testovi – identični kao pre: `rtest` (6e-15), `otest` (2,31e-8; 23/23), `otest GEN2` (2,74e-10; 141/141), `ptest` (0 problema), `spicetest` (0 problema), `spiceex` (stari primeri nepromenjeni, novi do 2e-12), `devtest` 60/60, `stest` 300 (OP 6e-10, AC 5e-7, formule 3e-9).
+- `ftest`: stari lažni nalaz „R₁=0“ i isti takav „n=0“ za mrežni transformator (uslov, ne jednakost). Zaokružene vrednosti L₁, L₂, M, k sada se pišu sa ≈.
+- `optest` (SEED=7, N=400): jedno kolo (321) daje radnu tačku koja se razlikuje 4 % od ngspice-a – isto i sa starim rešavačem, nije posledica ove faze; ostaje za ispitivanje.
 
-## Ostalo (čeka korisnika)
-1. Provera na pravom telefonu (dodir, rotacija tranzistora).
-2. Objava glavne verzije artefakta i APK V2.4 – tek kad korisnik kaže.
+## Ostalo
+1. Ispitati `optest` kolo 321 (prihvatanje rešenja na „podu zaokruživanja“ kod velikog pojačanja).
+2. Provera na pravom telefonu.
+3. APK (V2.6) i glavna verzija artefakta – tek kad korisnik kaže.
+4. PDF izveštaj u režimu osciloskopa; žute tačke za tok struje (ako korisnik želi).
+5. Sledeće ideje korisnika (za kasnije): relej, prekidač sa debouncing-om, šum.
