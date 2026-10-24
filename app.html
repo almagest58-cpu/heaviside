@@ -68,7 +68,7 @@ html.touch input[type=range]{pointer-events:none}
 html.touch .selbar,html.touch .sheet{touch-action:pan-y}
 input[type=range].armed{filter:brightness(1.25) drop-shadow(0 0 4px var(--k,var(--accent)))}
 .prbin{display:inline-flex;gap:4px;flex:none}.prbin .chip{padding:4px 7px}
-.typre{font:600 13px var(--font-mono);padding:6px 6px;border:1px solid var(--line);border-radius:8px;background:var(--bg2);color:var(--ink);flex:1;min-width:0;max-width:160px}
+.typre,.thpre{font:600 13px var(--font-mono);padding:6px 6px;border:1px solid var(--line);border-radius:8px;background:var(--bg2);color:var(--ink);flex:1;min-width:0;max-width:160px}
 .dsub{font-size:10px;opacity:.65;font-weight:500}
 .selmore{position:sticky;top:0;float:right;margin:0 -4px 0 6px;width:30px;height:30px;border:1px solid var(--line);border-radius:9px;background:var(--bg2);color:var(--ink);font:700 14px var(--font-ui);padding:0;z-index:2}
 .sgtypes button{padding:4px 7px;display:inline-flex;align-items:center}.dgenh{margin:-2px 2px 8px;font-size:12px}
@@ -3546,8 +3546,9 @@ function thySvg(p,s,isSel){const x=p.x,y=p.y,r=(p.rot||0)&3;const tr=r===0?`tran
 /* drawer icons of the thyristors: the same symbols, scaled into the 56 × 30 icon */
 /* (the quadrac gets its own icon layout: scaled down, its built-in diac would be too small to read) */
 const QDR_ICON={l:'M2 10H14M28 10H54M28 16L35 23H37M47 23H53',b:'M14 0.5V19.5M28 0.5V19.5M37.5 16V30M46.5 16V30',f:'M14 1L14 9.4L27.6 5.2ZM28 10.6L28 19L14.4 14.8ZM37.5 16.5L37.5 22.6L46.2 19.6ZM46.5 23.4L46.5 29.5L37.8 26.4Z'};
-document.querySelectorAll('svg[data-thy="QDR"]').forEach(g=>{const S=QDR_ICON;g.innerHTML=`<g stroke-linecap="round" stroke-linejoin="round"><path d="${S.l}" stroke-width="2"/><path d="${S.b}" stroke-width="3" stroke-linecap="butt"/><path d="${S.f}" fill="currentColor" stroke="none"/></g>`});
-document.querySelectorAll('svg[data-thy]:not([data-thy="QDR"])').forEach(g=>{const S=thySym(g.dataset.thy);g.innerHTML=`<g transform="translate(6 8.6) scale(.55)" stroke-linecap="round" stroke-linejoin="round"><path d="${S.l}" stroke-width="3.6"/><path d="${S.b}" stroke-width="5.4" stroke-linecap="butt"/><path d="${S.f}" fill="currentColor" stroke="none"/></g>`});
+document.querySelectorAll('svg[data-thy="QDR"]').forEach(g=>{const S=QDR_ICON;g.innerHTML=`<g transform="translate(2.8 1.5) scale(.9)" stroke-linecap="round" stroke-linejoin="round"><path d="${S.l}" stroke-width="2.2"/><path d="${S.b}" stroke-width="3" stroke-linecap="butt"/><path d="${S.f}" fill="currentColor" stroke="none"/></g>`});
+/* the gate lead is shortened in the icon and the symbol is fitted into the 56 × 30 box (top plate and triangles must not be cut off) */
+document.querySelectorAll('svg[data-thy]:not([data-thy="QDR"])').forEach(g=>{const S=Object.assign({},thySym(g.dataset.thy));S.l=S.l.replace('L80 40','L72 32');const y0=-21,y1=g.dataset.thy==='DIAC'?21:32,sc=Math.min(50/80,27/(y1-y0+3)),tx=(56-80*sc)/2,ty=(30-(y1+y0)*sc)/2;g.innerHTML=`<g transform="translate(${tx.toFixed(2)} ${ty.toFixed(2)}) scale(${sc.toFixed(3)})" stroke-linecap="round" stroke-linejoin="round"><path d="${S.l}" stroke-width="${(2/sc).toFixed(2)}"/><path d="${S.b}" stroke-width="${(3/sc).toFixed(2)}" stroke-linecap="butt"/><path d="${S.f}" fill="currentColor" stroke="none"/></g>`});
 /* wires are drawn as one or two straight segments (horizontal first). When that path would run through an element,
    an op-amp body or a terminal of another net, a short detour with up to three segments is chosen instead */
 let OBS=null;
