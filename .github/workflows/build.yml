@@ -35,14 +35,14 @@ jobs:
         working-directory: proj
         run: gradle assembleDebug --no-daemon
       - name: Pripremi APK
-        run: cp proj/app/build/outputs/apk/debug/app-debug.apk Heaviside-V2.6.apk
+        run: cp proj/app/build/outputs/apk/debug/app-debug.apk Heaviside-V2.7.apk
       - uses: actions/upload-artifact@v4
         with:
-          name: Heaviside-V2.6
-          path: Heaviside-V2.6.apk
+          name: Heaviside-V2.7
+          path: Heaviside-V2.7.apk
       - name: Objavi u Releases
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release delete najnovije --yes --cleanup-tag || true
-          gh release create najnovije Heaviside-V2.6.apk --title "Heaviside V2.6" --notes "Preuzmi Heaviside-V2.6.apk i instaliraj ga na telefonu."
+          gh release create najnovije Heaviside-V2.7.apk --title "Heaviside V2.7" --notes "Preuzmi Heaviside-V2.7.apk i instaliraj ga na telefonu."
