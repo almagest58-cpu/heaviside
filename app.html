@@ -64,6 +64,8 @@ button{cursor:pointer}
 .oscnote{font:12px var(--font-mono);color:var(--phase);margin-left:8px}
 .sgamp{margin-top:9px}
 html.touch input[type=range]{pointer-events:none}
+/* panels with sliders scroll only vertically, so a sideways finger move stays with the slider (no pointercancel) */
+html.touch .selbar,html.touch .sheet{touch-action:pan-y}
 input[type=range].armed{filter:brightness(1.25) drop-shadow(0 0 4px var(--k,var(--accent)))}
 .prbin{display:inline-flex;gap:4px;flex:none}.prbin .chip{padding:4px 7px}
 .typre{font:600 13px var(--font-mono);padding:6px 6px;border:1px solid var(--line);border-radius:8px;background:var(--bg2);color:var(--ink);flex:1;min-width:0;max-width:160px}
@@ -4856,8 +4858,9 @@ spW.addEventListener('change',()=>{state.spec.wave=spW.value;document.getElement
 const spFch=()=>{const v=getFq(spF,spFU);if(!(v>0&&v<1e11)){spF.classList.add('bad');return}state.spec.f0=v;renderCtl();save();drawGraph()};spF.addEventListener('change',spFch);{const di=document.getElementById('spD');di.addEventListener('change',()=>{const v=parseFloat(String(di.value).replace(',','.').replace('%',''));if(!(v>=1&&v<=99)){di.classList.add('bad');return}state.spec.duty=v/100;renderCtl();save();drawGraph()});di.addEventListener('keydown',e=>{if(e.key==='Enter')di.blur()})}spFU.addEventListener('change',spFch);
 smZ.addEventListener('change',()=>{const v=parseSI(smZ.value);if(!(v>0)){smZ.classList.add('bad');return}state.z0=v;renderCtl();save();drawGraph()});
 [spF,smZ].forEach(i=>i.addEventListener('keydown',e=>{if(e.key==='Enter')i.blur()}));
-/* touch: a slider is taken only after the finger rests on it for HOLD_MS without moving, so scrolling a panel over the sliders does not move them.
-   The native slider gets no touches (pointer-events:none under html.touch); this handler finds the slider under the finger and drives it. */
+/* touch: a slider is taken when the finger moves sideways on it, or rests on it for HOLD_MS; a mostly vertical move scrolls the panel
+   instead, so scrolling over the sliders does not move them. The native slider gets no touches (pointer-events:none under html.touch);
+   this handler finds the slider under the finger and drives it. */
 (function(){const HOLD_MS=150,MOVE_PX=8;const root=document.documentElement;
   if(matchMedia('(pointer:coarse)').matches)root.classList.add('touch');
   let g=null;
@@ -4867,9 +4870,10 @@ smZ.addEventListener('change',()=>{const v=parseSI(smZ.value);if(!(v>0)){smZ.cla
     if(String(v)!==r.value){r.value=v;r.dispatchEvent(new Event('input',{bubbles:true}))}}
   function end(commit){if(!g)return;clearTimeout(g.tm);const r=g.r,on=g.on;g=null;r.classList.remove('armed');if(on&&commit)r.dispatchEvent(new Event('change',{bubbles:true}))}
   document.addEventListener('pointerdown',e=>{if(e.pointerType==='mouse'){root.classList.remove('touch');return}root.classList.add('touch');
-    if(e.target.closest&&e.target.closest('button,select,textarea,input:not([type=range])'))return;const r=find(e.clientX,e.clientY);if(!r||!(r.parentElement.contains(e.target)||e.target.contains(r)))return;end(false);g={r,id:e.pointerId,x0:e.clientX,y0:e.clientY,x:e.clientX,on:false};
+    if(e.target.closest&&e.target.closest('button,select,textarea,input:not([type=range])'))return;const r=find(e.clientX,e.clientY);if(!r)return;{const pn=r.closest('.selbar,.sheet,#drawer')||r.parentElement;if(!(pn.contains(e.target)||e.target.contains(r)))return}end(false);g={r,id:e.pointerId,x0:e.clientX,y0:e.clientY,x:e.clientX,on:false};
     g.tm=setTimeout(()=>{if(!g)return;g.on=true;r.classList.add('armed');r.focus({preventScroll:true});setFrom(r,g.x)},HOLD_MS)},true);
-  document.addEventListener('pointermove',e=>{if(!g||e.pointerId!==g.id)return;g.x=e.clientX;if(g.on)setFrom(g.r,e.clientX);else if(Math.hypot(e.clientX-g.x0,e.clientY-g.y0)>MOVE_PX)end(false)},true);
+  document.addEventListener('pointermove',e=>{if(!g||e.pointerId!==g.id)return;g.x=e.clientX;if(g.on){setFrom(g.r,e.clientX);return}
+    const dx=Math.abs(e.clientX-g.x0),dy=Math.abs(e.clientY-g.y0);if(dx>6&&dx>1.5*dy){clearTimeout(g.tm);g.on=true;g.r.classList.add('armed');setFrom(g.r,e.clientX)}else if(Math.hypot(dx,dy)>MOVE_PX)end(false)},true);
   document.addEventListener('pointerup',e=>{if(g&&e.pointerId===g.id)end(true)},true);
   document.addEventListener('pointercancel',e=>{if(g&&e.pointerId===g.id)end(true)},true);
   /* once the slider is taken, the finger must not scroll the panel */
