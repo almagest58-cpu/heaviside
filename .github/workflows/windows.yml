@@ -1,0 +1,61 @@
+name: Napravi Windows program
+
+on:
+  push:
+    paths: [desktop.zip]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: win
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Raspakuj projekat
+        shell: pwsh
+        run: Expand-Archive -Path desktop.zip -DestinationPath proj
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Instaliraj Electron, fontove i MathJax
+        working-directory: proj
+        run: npm install --no-audit --no-fund
+      - name: Ugradi fontove i MathJax
+        working-directory: proj
+        run: node prep.js
+      - name: Napravi instalaciju
+        working-directory: proj
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+        run: npx electron-builder --win nsis --x64 --publish never
+      - name: Provera programa
+        working-directory: proj
+        shell: pwsh
+        run: |
+          $p = Start-Process -FilePath "dist\win-unpacked\Heaviside.exe" -ArgumentList "--selftest","$pwd\selftest.json" -PassThru
+          if (-not $p.WaitForExit(180000)) { $p.Kill(); throw "selftest: isteklo vreme" }
+          Get-Content selftest.json
+          $r = Get-Content selftest.json -Raw | ConvertFrom-Json
+          if ($r.fatal -or $r.reportErr) { throw "selftest: greska" }
+          if (-not $r.fontUi -or -not $r.fontMono -or -not $r.mathjax -or -not $r.hv -or $r.pdfBytes -lt 20000 -or $r.mjx -lt 1) { throw "selftest: nesto nedostaje" }
+          Get-ChildItem dist
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Heaviside-Windows
+          path: |
+            proj/dist/Heaviside-Setup-*.exe
+            proj/selftest.*
+      - name: Objavi u Releases
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          f=$(ls proj/dist/Heaviside-Setup-*.exe | head -1)
+          gh release delete windows --yes --cleanup-tag || true
+          gh release create windows "$f" proj/selftest.json proj/selftest.pdf --title "Heaviside za Windows" --latest=false --notes "Preuzmi $(basename "$f"), pokreni ga i prati instalaciju. Ako Windows prikaže 'Windows protected your PC', klikni 'More info' pa 'Run anyway'."

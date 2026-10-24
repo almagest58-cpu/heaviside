@@ -2,6 +2,7 @@ name: Napravi APK
 
 on:
   push:
+    paths: [projekat.zip]
   workflow_dispatch:
 
 permissions:
