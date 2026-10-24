@@ -2448,7 +2448,7 @@ function probeRow(n){if(!oscMode())return'';const opts=probeOpts(n);if(!opts.len
 /* probe chips without the label, placed at the right end of the value row */
 function probeChips(n){if(!oscMode())return'';const opts=probeOpts(n);if(!opts.length)return'';const O=oscState();
   return`<span class="prbin">${opts.map(q=>{const j=O.ch.findIndex(c=>c.id===n.id&&c.q===q);return`<button class="chip prb${j>=0?' on':''}" data-probe="${q}" data-id="${n.id}"${j>=0?` style="--pc:${chCol(j)}"`:''} aria-label="${t('osc_probe')} ${PROBE_LBL[q]}"><i>${j>=0?'●':'+'}</i>${PROBE_LBL[q]}</button>`}).join('')}</span>`}
-function withProbes(h,n){const pc=probeChips(n);if(!pc)return h;const i=h.indexOf('class="val"');const j=i<0?-1:h.indexOf('</div>',i);if(j<0)return h+probeRow(n);return h.slice(0,j)+pc+h.slice(j)}
+function withProbes(h,n){/* a block may mark where its scope buttons go (thyristors, switch: above the sliders) */if(h.includes('<!--probes-->'))return h.replace('<!--probes-->',probeRow(n));const pc=probeChips(n);if(!pc)return h;const i=h.indexOf('class="val"');const j=i<0?-1:h.indexOf('</div>',i);if(j<0)return h+probeRow(n);return h.slice(0,j)+pc+h.slice(j)}
 function toggleProbe(id,q){const O=oscState();const j=O.ch.findIndex(c=>c.id===id&&c.q===q);if(j>=0)O.ch.splice(j,1);else{if(O.ch.length>=5){toast(t('osc_full'));return}O.ch.push({id,q})}save();oscRebuild();renderSelBar();renderSchematic()}
 
 /* ---- the circuit for the time-domain simulator ---- */
@@ -4047,16 +4047,18 @@ function subU(x){return String(x).replace(/([A-Za-zβτΔ])_([A-Za-z0-9]+(?:\([A
 function thyBlock(n,pfx){const s=ensureSc(n),k=n.kind,rl=isReal(n),ty=thyTy(n);
   let h=`<div class="selrow"><span class="tag ${kc(k)}">${n.name}</span><select class="thpre" data-id="${n.id}" aria-label="${t('ty_lbl')}">${Object.keys(THY_TY[k]).map(x=>`<option value="${x}"${x===ty?' selected':''}>${x==='gen'?t('ty_gen'):THY_NAME[x]}</option>`).join('')}</select><button class="prst" data-screset="${n.id}" title="${t('rm_resetT')}" aria-label="${t('rm_resetT')}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12a8 8 0 1 0 2.3-5.6"/><path d="M4 4v5h5"/></svg>${t('rm_reset')}</button></div><!--more-->`;
   if(state.realMode)h+=`<div class="selrow" style="margin-top:6px"><div class="seg3" role="group"><button data-realset="0" data-id="${n.id}" aria-pressed="${!rl}">${t('sb_ideal')}</button><button data-realset="1" data-id="${n.id}" aria-pressed="${rl}">${t('sb_real')}</button></div></div>`;
-  const lim=k!=='DIAC'&&s.ih<1.3*s.igt;h+=`<p class="hint" style="margin:6px 0 0">${subU(t('sb_th'+k+(rl?'R':'I')))}${ty!=='gen'?' '+subU(t(k==='DIAC'?'ty_noteThD':'ty_noteTh')):''}${lim?' '+subU(t('sb_thIh',si(1.3*s.igt,'A',3).trim())):''}</p>`;
+  h+='<!--probes-->';
   for(const q of scParams(n)){const v=s[q[0]];h+=`<div class="prow"><span class="ptag">${q[1]}</span><input type="range" class="ssl" id="${pfx}y${n.id}_${q[0]}" data-id="${n.id}" data-key="${q[0]}" min="0" max="1000" step="1" value="${scPos(q,v)}" aria-label="${q[1].replace(/<[^>]+>/g,'')}"><input class="sval" id="${pfx}z${n.id}_${q[0]}" data-id="${n.id}" data-key="${q[0]}" value="${scFmt(q,v)}" autocomplete="off" spellcheck="false" aria-label="${q[1].replace(/<[^>]+>/g,'')}"></div>`}
+  /* the explanation below the sliders */const lim=k!=='DIAC'&&s.ih<1.3*s.igt;h+=`<p class="hint" style="margin:8px 0 0">${subU(t('sb_th'+k+(rl?'R':'I')))}${ty!=='gen'?' '+subU(t(k==='DIAC'?'ty_noteThD':'ty_noteTh')):''}${lim?' '+subU(t('sb_thIh',si(1.3*s.igt,'A',3).trim())):''}</p>`;
   return h}
 /* switch panel: open/closed, reset, ideal/real (in real mode) and the real parameters */
 function swBlock(n,pfx){const s=ensureSc(n),rl=isReal(n);
   let h=`<div class="selrow"><span class="tag kSW">${n.name}</span><div class="seg3" role="group"><button data-swset="0" data-id="${n.id}" aria-pressed="${!n.on}">${t('sw_open')}</button><button data-swset="1" data-id="${n.id}" aria-pressed="${!!n.on}">${t('sw_closed')}</button></div>`+
     (rl?`<button class="prst" data-screset="${n.id}" title="${t('rm_resetT')}" aria-label="${t('rm_resetT')}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12a8 8 0 1 0 2.3-5.6"/><path d="M4 4v5h5"/></svg>${t('rm_reset')}</button>`:'')+`</div><!--more-->`;
   if(state.realMode)h+=`<div class="selrow" style="margin-top:6px"><div class="seg3" role="group"><button data-realset="0" data-id="${n.id}" aria-pressed="${!rl}">${t('sb_ideal')}</button><button data-realset="1" data-id="${n.id}" aria-pressed="${rl}">${t('sb_real')}</button></div></div>`;
-  h+=`<p class="hint" style="margin:6px 0 0">${subU(t(rl?'sb_swReal':'sb_swIdeal'))} ${t('sb_swTap')}</p>`;
+  h+='<!--probes-->';
   if(rl)for(const q of SCPAR.SW){const v=s[q[0]];h+=`<div class="prow"><span class="ptag">${q[1]}</span><input type="range" class="ssl" id="${pfx}y${n.id}_${q[0]}" data-id="${n.id}" data-key="${q[0]}" min="0" max="1000" step="1" value="${scPos(q,v)}" aria-label="${q[1].replace(/<[^>]+>/g,'')}"><input class="sval" id="${pfx}z${n.id}_${q[0]}" data-id="${n.id}" data-key="${q[0]}" value="${scFmt(q,v)}" autocomplete="off" spellcheck="false" aria-label="${q[1].replace(/<[^>]+>/g,'')}"></div>`}
+  /* the explanation below the sliders */h+=`<p class="hint" style="margin:8px 0 0">${subU(t(rl?'sb_swReal':'sb_swIdeal'))} ${t('sb_swTap')}</p>`;
   return h}
 /* contact bounce (real switch): after the moving contact first touches (or leaves) the fixed one it bounces N_b times within about t_b.
    The gaps shrink and the touches grow, with random spread, so every press is a little different, as in a real switch. Opening
